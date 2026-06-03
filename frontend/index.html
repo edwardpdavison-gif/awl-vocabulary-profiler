@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWL Vocabulary Profiler</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .intro {
+      color: #555;
+      margin-bottom: 24px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 12px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 12px;
+      padding: 10px 18px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .results {
+      margin-top: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #f0f3f7;
+      padding: 14px;
+      border-radius: 6px;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 24px;
+      margin-top: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .error {
+      color: #b00020;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>AWL Vocabulary Profiler</h1>
+
+  <p class="intro">
+    Paste a text below to analyse its use of Coxhead’s Academic Word List vocabulary.
+  </p>
+
+  <textarea id="textInput" placeholder="Paste your text here..."></textarea>
+
+  <br />
+
+  <button id="analyseButton">Analyse text</button>
+
+  <div id="error" class="error"></div>
+
+  <div id="results" class="results" style="display: none;">
+    <h2>Vocabulary Profile</h2>
+
+    <div class="summary">
+      <div class="card">
+        Total words
+        <strong id="totalWords">0</strong>
+      </div>
+
+      <div class="card">
+        AWL tokens
+        <strong id="awlTokens">0</strong>
+      </div>
+
+      <div class="card">
+        AWL families
+        <strong id="awlFamilies">0</strong>
+      </div>
+
+      <div class="card">
+        AWL percentage
+        <strong id="awlPercentage">0%</strong>
+      </div>
+    </div>
+
+    <h3>Matched AWL Words</h3>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Word</th>
+          <th>Headword</th>
+          <th>Sublist</th>
+          <th>Frequency</th>
+        </tr>
+      </thead>
+      <tbody id="matchedWordsTable"></tbody>
+    </table>
+
+    <h3>Sublist Breakdown</h3>
+    <ul id="sublistBreakdown"></ul>
+  </div>
+
+  <script>
+    const analyseButton = document.getElementById("analyseButton");
+    const textInput = document.getElementById("textInput");
+    const errorDiv = document.getElementById("error");
+    const resultsDiv = document.getElementById("results");
+
+    analyseButton.addEventListener("click", async () => {
+      const text = textInput.value;
+
+      errorDiv.textContent = "";
+      resultsDiv.style.display = "none";
+
+      if (!text.trim()) {
+        errorDiv.textContent = "Please paste some text before analysing.";
+        return;
+      }
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/analyse", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ text: text })
+        });
+
+        if (!response.ok) {
+          throw new Error("The backend returned an error.");
+        }
+
+        const data = await response.json();
+
+        document.getElementById("totalWords").textContent = data.total_words;
+        document.getElementById("awlTokens").textContent = data.awl_token_count;
+        document.getElementById("awlFamilies").textContent = data.awl_family_count;
+        document.getElementById("awlPercentage").textContent = data.awl_percentage + "%";
+
+        const tableBody = document.getElementById("matchedWordsTable");
+        tableBody.innerHTML = "";
+
+        data.matched_words.forEach(item => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${item.word}</td>
+            <td>${item.headword}</td>
+            <td>${item.sublist}</td>
+            <td>${item.frequency}</td>
+          `;
+
+          tableBody.appendChild(row);
+        });
+
+        const sublistList = document.getElementById("sublistBreakdown");
+        sublistList.innerHTML = "";
+
+        Object.entries(data.sublist_breakdown).forEach(([sublist, count]) => {
+          const item = document.createElement("li");
+          item.textContent = `Sublist ${sublist}: ${count} AWL token(s)`;
+          sublistList.appendChild(item);
+        });
+
+        resultsDiv.style.display = "block";
+
+      } catch (error) {
+        errorDiv.textContent = "Could not connect to the backend. Make sure FastAPI is running.";
+      }
+    });
+  </script>
+</body>
+</html>

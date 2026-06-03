@@ -1,0 +1,20 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI(title="AWL Vocabulary Profiler")
+
+
+class AnalyseRequest(BaseModel):
+    text: str
+
+
+@app.get("/")
+def root():
+    return {"message": "AWL Vocabulary Profiler API is running"}
+
+
+@app.post("/analyse")
+def analyse_text(request: AnalyseRequest):
+    return {
+        "received_text": request.text
+    }
