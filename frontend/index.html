@@ -113,23 +113,25 @@
         <strong id="totalWords">0</strong>
       </div>
 
-      <div class="card">
-        AWL tokens
-        <strong id="awlTokens">0</strong>
-      </div>
 
-      <div class="card">
-        AWL families
-        <strong id="awlFamilies">0</strong>
-      </div>
+  <div class="card">
+    GSL Coverage
+    <strong id="gslPercentage">0%</strong>
+  </div>
 
-      <div class="card">
-        AWL percentage
-        <strong id="awlPercentage">0%</strong>
-      </div>
-    </div>
+  <div class="card">
+    AWL Coverage
+    <strong id="awlPercentage">0%</strong>
+  </div>
 
-    <h3>Matched AWL Words</h3>
+  <div class="card">
+    Off-list
+    <strong id="offlistPercentage">0%</strong>
+  </div>
+
+</div>  
+
+    <h3>Academic Vocabulary Used</h3>
 
     <table>
       <thead>
@@ -179,15 +181,22 @@
 
         const data = await response.json();
 
-        document.getElementById("totalWords").textContent = data.total_words;
-        document.getElementById("awlTokens").textContent = data.awl_token_count;
-        document.getElementById("awlFamilies").textContent = data.awl_family_count;
-        document.getElementById("awlPercentage").textContent = data.awl_percentage + "%";
+        document.getElementById("totalWords").textContent =
+  data.total_words;
+
+document.getElementById("gslPercentage").textContent =
+  data.gsl_percentage + "%";
+
+document.getElementById("awlPercentage").textContent =
+  data.awl_percentage + "%";
+
+document.getElementById("offlistPercentage").textContent =
+  data.offlist_percentage + "%";
 
         const tableBody = document.getElementById("matchedWordsTable");
         tableBody.innerHTML = "";
 
-        data.matched_words.forEach(item => {
+        data.matched_awl_words.forEach(item => {
           const row = document.createElement("tr");
 
           row.innerHTML = `
@@ -203,7 +212,7 @@
         const sublistList = document.getElementById("sublistBreakdown");
         sublistList.innerHTML = "";
 
-        Object.entries(data.sublist_breakdown).forEach(([sublist, count]) => {
+        Object.entries(data.awl_sublist_breakdown).forEach(([sublist, count]) => {
           const item = document.createElement("li");
           item.textContent = `Sublist ${sublist}: ${count} AWL token(s)`;
           sublistList.appendChild(item);
