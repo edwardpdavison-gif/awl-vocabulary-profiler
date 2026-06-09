@@ -18,6 +18,7 @@ def analyse_text_against_awl(
 
     matched_awl_words = {}
     matched_gsl_words = {}
+    matched_offlist_words = {}
 
     awl_sublist_breakdown = {}
 
@@ -92,6 +93,14 @@ def analyse_text_against_awl(
 
         offlist_token_count += 1
 
+        if token not in matched_offlist_words:
+            matched_offlist_words[token] = {
+                "word": token,
+                "frequency": 0
+            }
+
+        matched_offlist_words[token]["frequency"] += 1
+
     total_words = len(tokens)
 
     awl_percentage = 0.0
@@ -134,6 +143,10 @@ def analyse_text_against_awl(
 
         "matched_gsl_words": list(
             matched_gsl_words.values()
+        ),
+
+        "matched_offlist_words": list(
+            matched_offlist_words.values()
         ),
 
         "awl_sublist_breakdown": awl_sublist_breakdown,

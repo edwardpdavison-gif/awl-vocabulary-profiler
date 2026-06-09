@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AWL Vocabulary Profiler</title>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,10 +15,6 @@
       padding: 0 20px;
       background: #f7f7f7;
       color: #222;
-    }
-
-    h1 {
-      margin-bottom: 10px;
     }
 
     .intro {
@@ -39,6 +37,13 @@
       cursor: pointer;
     }
 
+    .secondary-button {
+      margin-left: 8px;
+      background: #ffffff;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+    }
+
     .results {
       margin-top: 30px;
       padding: 20px;
@@ -51,7 +56,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 30px;
     }
 
     .card {
@@ -66,25 +71,104 @@
       margin-top: 6px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
+    .chart-box {
+      margin-bottom: 30px;
     }
 
-    th, td {
-      border-bottom: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
+    .chart-box canvas {
+      max-height: 320px;
     }
 
-    th {
-      background: #f0f0f0;
+    .word-groups {
+      margin-bottom: 30px;
+    }
+
+    .word-group {
+      margin-bottom: 20px;
+    }
+
+    .word-group h4 {
+      margin-bottom: 8px;
+    }
+
+    .word-list,
+    .word-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .word-box {
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+
+    .word-pill {
+      background: #f0f3f7;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 14px;
+    }
+
+    .note {
+      color: #666;
+      font-size: 14px;
+      margin-top: -8px;
+      margin-bottom: 12px;
+    }
+
+    .empty-message {
+      color: #666;
+      font-style: italic;
     }
 
     .error {
       color: #b00020;
       margin-top: 16px;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.45);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .modal-content {
+      background: white;
+      max-width: 750px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 10px;
+      position: relative;
+    }
+
+    .modal-content canvas {
+      max-height: 320px;
+      margin-bottom: 20px;
+    }
+
+    .close-button {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      border: none;
+      background: transparent;
+      font-size: 28px;
+      cursor: pointer;
+      margin-top: 0;
+      padding: 0;
     }
   </style>
 </head>
@@ -93,7 +177,7 @@
   <h1>AWL Vocabulary Profiler</h1>
 
   <p class="intro">
-    Paste a text below to analyse its use of Coxhead’s Academic Word List vocabulary.
+    Paste a text below to analyse its vocabulary profile using the Academic Word List (Coxhead, 2000) and General Service List (West, 1953).
   </p>
 
   <textarea id="textInput" placeholder="Paste your text here..."></textarea>
@@ -101,6 +185,10 @@
   <br />
 
   <button id="analyseButton">Analyse text</button>
+
+  <button id="howToUseButton" class="secondary-button">
+    How to use this tool
+  </button>
 
   <div id="error" class="error"></div>
 
@@ -113,47 +201,177 @@
         <strong id="totalWords">0</strong>
       </div>
 
+      <div class="card">
+        GSL Coverage
+        <strong id="gslPercentage">0%</strong>
+      </div>
 
-  <div class="card">
-    GSL Coverage
-    <strong id="gslPercentage">0%</strong>
-  </div>
+      <div class="card">
+        AWL Coverage
+        <strong id="awlPercentage">0%</strong>
+      </div>
 
-  <div class="card">
-    AWL Coverage
-    <strong id="awlPercentage">0%</strong>
-  </div>
+      <div class="card">
+        Off-list
+        <strong id="offlistPercentage">0%</strong>
+      </div>
+    </div>
 
-  <div class="card">
-    Off-list
-    <strong id="offlistPercentage">0%</strong>
-  </div>
+    <div class="chart-box">
+      <h3>AWL / GSL / Off-list</h3>
+      <canvas id="profilePieChart"></canvas>
+    </div>
 
-</div>  
+    <div class="chart-box">
+      <h3>AWL Sublist Distribution</h3>
+      <canvas id="sublistChart"></canvas>
+    </div>
 
     <h3>Academic Vocabulary Used</h3>
+    <div id="awlWordGroups" class="word-groups"></div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Word</th>
-          <th>Headword</th>
-          <th>Sublist</th>
-          <th>Frequency</th>
-        </tr>
-      </thead>
-      <tbody id="matchedWordsTable"></tbody>
-    </table>
+    <h3>Off-list Vocabulary</h3>
+    <p class="note">
+      Showing off-list words longer than four letters, arranged from longest to shortest.
+    </p>
+    <div id="offlistWordBox" class="word-box"></div>
+  </div>
 
-    <h3>Sublist Breakdown</h3>
-    <ul id="sublistBreakdown"></ul>
+  <div id="howToUseModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <button id="closeModalButton" class="close-button">×</button>
+
+      <h2>How to use this tool</h2>
+
+      <p>
+        Paste a reading text into the box and click <strong>Analyse text</strong>.
+        The tool compares the vocabulary in the text with two word lists.
+      </p>
+
+      <ul>
+        <li>
+          <strong>GSL</strong>: General Service List (West, 1953), a list of common high-frequency English words.
+        </li>
+        <li>
+          <strong>AWL</strong>: Academic Word List (Coxhead, 2000), a list of word families commonly found in academic texts.
+        </li>
+        <li>
+          <strong>Off-list</strong>: words not currently matched to either list.
+        </li>
+      </ul>
+
+      <p>
+        A higher percentage of AWL or off-list vocabulary may suggest that a text is more challenging,
+        but the <strong>result should be used as a guide rather than a final judgement.</strong>
+
+      </p>
+
+ <p>
+  The app will show the user which AWL words appear in their text, organised by sublist. 'Off-list' words will also be shown, these words <strong>may</strong> present challenges for thier EAL students
+
+      </p>
+
+      <h3>Typical vocabulary profile pattern</h3>
+
+      <p>
+        The example chart below is illustrative. Based on analysis of reading texts from Cambridge Suite English exams, it shows how vocabulary profiles may change as reading texts become more challenging. 
+      </p>
+
+      <canvas id="levelProfileChart"></canvas>
+
+      <h3>Please note</h3>
+
+      <ul>
+        <li>The GSL was complied in 1953. Many very common modern words will therefore appear as off-list, as will proper nouns.</li>
+        <li>This tool is intended as a teacher support tool, not a complete readability measure.</li>
+      </ul>
+
+      <h3>References</h3>
+<ul>
+  <li>
+    Coxhead, A. (2000). <em>A New Academic Word List</em>. 
+    <em>TESOL Quarterly, 34</em>(2), 213–238.
+  </li>
+  <li>
+    West, M. (1953). <em>A General Service List of English Words</em>. 
+    London: Longman, Green and Co.
+  </li>
+</ul>
+
+    </div>
   </div>
 
   <script>
     const analyseButton = document.getElementById("analyseButton");
+    const howToUseButton = document.getElementById("howToUseButton");
+    const closeModalButton = document.getElementById("closeModalButton");
+
     const textInput = document.getElementById("textInput");
     const errorDiv = document.getElementById("error");
     const resultsDiv = document.getElementById("results");
+    const howToUseModal = document.getElementById("howToUseModal");
+
+    let profilePieChart = null;
+    let sublistChart = null;
+    let levelProfileChart = null;
+
+    howToUseButton.addEventListener("click", () => {
+      howToUseModal.style.display = "flex";
+
+      const levelChartCanvas = document.getElementById("levelProfileChart");
+
+      if (levelProfileChart) {
+        levelProfileChart.destroy();
+      }
+
+      levelProfileChart = new Chart(levelChartCanvas, {
+        type: "line",
+        data: {
+          labels: [
+            "A2 Key",
+            "B1 Preliminary",
+            "B2 First",
+            "C1 Advanced",
+            "C2 Proficiency"
+          ],
+          datasets: [
+            {
+              label: "GSL",
+              data: [87, 80, 74, 71, 71]
+            },
+            {
+              label: "AWL",
+              data: [1, 7, 7, 3, 4]
+            },
+            {
+              label: "Off-list",
+              data: [12, 13, 19, 23, 25]
+            }
+          ]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: value => value + "%"
+              }
+            }
+          }
+        }
+      });
+    });
+
+    closeModalButton.addEventListener("click", () => {
+      howToUseModal.style.display = "none";
+    });
+
+    howToUseModal.addEventListener("click", event => {
+      if (event.target === howToUseModal) {
+        howToUseModal.style.display = "none";
+      }
+    });
 
     analyseButton.addEventListener("click", async () => {
       const text = textInput.value;
@@ -182,46 +400,177 @@
         const data = await response.json();
 
         document.getElementById("totalWords").textContent =
-  data.total_words;
+          data.total_words;
 
-document.getElementById("gslPercentage").textContent =
-  data.gsl_percentage + "%";
+        document.getElementById("gslPercentage").textContent =
+          data.gsl_percentage + "%";
 
-document.getElementById("awlPercentage").textContent =
-  data.awl_percentage + "%";
+        document.getElementById("awlPercentage").textContent =
+          data.awl_percentage + "%";
 
-document.getElementById("offlistPercentage").textContent =
-  data.offlist_percentage + "%";
+        document.getElementById("offlistPercentage").textContent =
+          data.offlist_percentage + "%";
 
-        const tableBody = document.getElementById("matchedWordsTable");
-        tableBody.innerHTML = "";
+        const pieCanvas = document.getElementById("profilePieChart");
+
+        if (profilePieChart) {
+          profilePieChart.destroy();
+        }
+
+        profilePieChart = new Chart(pieCanvas, {
+          type: "pie",
+          data: {
+            labels: Object.keys(data.profile_breakdown),
+            datasets: [
+              {
+                data: Object.values(data.profile_breakdown)
+              }
+            ]
+          }
+        });
+
+        const sublistCanvas = document.getElementById("sublistChart");
+
+        if (sublistChart) {
+          sublistChart.destroy();
+        }
+
+        sublistChart = new Chart(sublistCanvas, {
+          type: "bar",
+          data: {
+            labels: Object.keys(data.awl_sublist_breakdown).map(
+              sublist => "Sublist " + sublist
+            ),
+            datasets: [
+              {
+                label: "AWL tokens",
+                data: Object.values(data.awl_sublist_breakdown)
+              }
+            ]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            }
+          }
+        });
+
+        const awlWordGroups = document.getElementById("awlWordGroups");
+        awlWordGroups.innerHTML = "";
+
+        const wordsBySublist = {};
 
         data.matched_awl_words.forEach(item => {
-          const row = document.createElement("tr");
+          const sublist = item.sublist;
 
-          row.innerHTML = `
-            <td>${item.word}</td>
-            <td>${item.headword}</td>
-            <td>${item.sublist}</td>
-            <td>${item.frequency}</td>
-          `;
+          if (!wordsBySublist[sublist]) {
+            wordsBySublist[sublist] = [];
+          }
 
-          tableBody.appendChild(row);
+          wordsBySublist[sublist].push(item.headword);
         });
 
-        const sublistList = document.getElementById("sublistBreakdown");
-        sublistList.innerHTML = "";
+        const sublists = Object.keys(wordsBySublist).sort(
+          (a, b) => Number(a) - Number(b)
+        );
 
-        Object.entries(data.awl_sublist_breakdown).forEach(([sublist, count]) => {
-          const item = document.createElement("li");
-          item.textContent = `Sublist ${sublist}: ${count} AWL token(s)`;
-          sublistList.appendChild(item);
+        if (sublists.length === 0) {
+          const emptyMessage = document.createElement("p");
+          emptyMessage.className = "empty-message";
+          emptyMessage.textContent = "No AWL vocabulary found in this text.";
+          awlWordGroups.appendChild(emptyMessage);
+        }
+
+        sublists.forEach(sublist => {
+          const groupDiv = document.createElement("div");
+          groupDiv.className = "word-group";
+
+          const heading = document.createElement("h4");
+          heading.textContent = "Sublist " + sublist;
+
+          const wordList = document.createElement("div");
+          wordList.className = "word-list";
+
+          const uniqueWords = [...new Set(wordsBySublist[sublist])];
+
+          uniqueWords.sort().forEach(word => {
+            const wordPill = document.createElement("span");
+            wordPill.className = "word-pill";
+            wordPill.textContent = word;
+            wordList.appendChild(wordPill);
+          });
+
+          groupDiv.appendChild(heading);
+          groupDiv.appendChild(wordList);
+          awlWordGroups.appendChild(groupDiv);
         });
+
+        const offlistWordBox = document.getElementById("offlistWordBox");
+        offlistWordBox.innerHTML = "";
+
+        const hiddenOfflistWords = [
+          "doesn",
+          "couldn",
+          "wouldn",
+          "shouldn",
+          "didn",
+          "isn",
+          "aren",
+          "wasn",
+          "weren",
+          "haven",
+          "hasn",
+          "hadn",
+          "won",
+          "don",
+          "their",
+          "there",
+          "these",
+          "those",
+          "himself",
+          "herself",
+          "itself",
+          "yourself",
+          "myself",
+          "ourselves",
+          "themselves"
+        ];
+
+        const filteredOfflistWords = data.matched_offlist_words
+          .filter(item =>
+            item.word.length > 4 &&
+            !hiddenOfflistWords.includes(item.word)
+          )
+          .map(item => item.word);
+
+        const uniqueOfflistWords = [...new Set(filteredOfflistWords)];
+
+        if (uniqueOfflistWords.length === 0) {
+          const emptyMessage = document.createElement("p");
+          emptyMessage.className = "empty-message";
+          emptyMessage.textContent = "No longer off-list words found.";
+          offlistWordBox.appendChild(emptyMessage);
+        }
+
+        uniqueOfflistWords
+          .sort((a, b) => b.length - a.length || a.localeCompare(b))
+          .forEach(word => {
+            const wordPill = document.createElement("span");
+            wordPill.className = "word-pill";
+            wordPill.textContent = word;
+            offlistWordBox.appendChild(wordPill);
+          });
 
         resultsDiv.style.display = "block";
 
       } catch (error) {
-        errorDiv.textContent = "Could not connect to the backend. Make sure FastAPI is running.";
+        errorDiv.textContent =
+          "Could not connect to the backend. Make sure FastAPI is running.";
       }
     });
   </script>
