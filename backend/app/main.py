@@ -6,18 +6,25 @@ from app.tokenizer import tokenize
 from app.data_loader import load_awl_data, load_gsl_data
 from app.analyser import analyse_text_against_awl
 
+
 app = FastAPI(title="AWL Vocabulary Profiler")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "https://awlprofiler.blendedlearninginstitute.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 awl_lookup = load_awl_data()
 gsl_lookup = load_gsl_data()
+
 
 class AnalyseRequest(BaseModel):
     text: str
@@ -33,11 +40,14 @@ def awl_test():
     return {
         "total_awl_entries": len(awl_lookup)
     }
+
+
 @app.get("/gsl-test")
 def gsl_test():
     return {
         "total_gsl_entries": len(gsl_lookup)
     }
+
 
 @app.post("/analyse")
 def analyse_text(request: AnalyseRequest):
