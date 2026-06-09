@@ -1,10 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import nltk
 
 from app.tokenizer import tokenize
 from app.data_loader import load_awl_data, load_gsl_data
 from app.analyser import analyse_text_against_awl
+
+
+nltk.download("wordnet")
+nltk.download("omw-1.4")
 
 
 app = FastAPI(title="AWL Vocabulary Profiler")
