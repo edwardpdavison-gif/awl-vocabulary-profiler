@@ -1,18 +1,34 @@
-from nltk.stem import WordNetLemmatizer
+def simple_lemma(token: str) -> str:
+    word = token.lower()
 
+    if word.endswith("ies") and len(word) > 4:
+        return word[:-3] + "y"
 
-lemmatizer = WordNetLemmatizer()
+    if word.endswith("ing") and len(word) > 5:
+        base = word[:-3]
+        if len(base) >= 2 and base[-1] == base[-2]:
+            base = base[:-1]
+        return base
+
+    if word.endswith("ed") and len(word) > 4:
+        base = word[:-2]
+        if len(base) >= 2 and base[-1] == base[-2]:
+            base = base[:-1]
+        return base
+
+    if word.endswith("s") and len(word) > 3:
+        return word[:-1]
+
+    return word
 
 
 def get_candidate_forms(token: str) -> list[str]:
-    token = token.lower()
+    word = token.lower()
+    lemma = simple_lemma(word)
 
-    candidates = [
-        token,
-        lemmatizer.lemmatize(token, pos="v"),
-        lemmatizer.lemmatize(token, pos="n"),
-        lemmatizer.lemmatize(token, pos="a"),
-        lemmatizer.lemmatize(token, pos="r"),
-    ]
+    candidates = [word]
 
-    return list(dict.fromkeys(candidates))
+    if lemma != word:
+        candidates.append(lemma)
+
+    return candidates
